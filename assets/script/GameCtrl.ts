@@ -24,7 +24,7 @@ export default class NewClass extends cc.Component {
 
     tempBrushList: cc.Node[] = [];
     @property(cc.Node)
-    tempLine:cc.Node = null;
+    tempLine: cc.Node = null;
     onLoad() {
         //physic environtment
         var manager = cc.director.getPhysicsManager();
@@ -69,10 +69,9 @@ export default class NewClass extends cc.Component {
         let end = event.getLocation();
 
         if (this.previousLoc == null) {
-            let newPos = cc.v3(end.x, end.y);
-            let loc = this.onConvertToWorldPoint(newPos, cc.v2(360, 640));
+            let loc = this.onConvertToWorldPoint(end, cc.v2(360, 640));
             //do nothing
-            if(this.previousPosition==null){
+            if (this.previousPosition == null) {
                 this.previousPosition = loc;
             }
             this.pointList.push(loc);
@@ -80,16 +79,34 @@ export default class NewClass extends cc.Component {
 
         } else {
             //if too close old
-            let delta = this.deltaDistance(end, this.previousLoc);
-            if (delta < 12) {
+            let distance = this.deltaDistance(end, this.previousLoc);
+            if (distance < 20) {
                 //not draw
                 console.log('too close');
-                //return;
-            } else{
+                return;
+            } else if(distance>40){
+                let step = distance / 19;
+                for (var i = 0; i < step; i++) {
+                    let dt = 1.0 * i / step;
+                    let difX = end.x - this.previousLoc.x;
+                    let difY = end.y - this.previousLoc.y;
+                    let newPos = cc.v3(end.x + difX * dt, end.y + difY * dt);
+                    let loc = this.onConvertToWorldPoint(newPos, cc.v2(360, 640));
+                    //draw here
+                    this.drawLine(this.previousPosition, loc, this.tempLine);
+                    //do nothing
+                    this.pointList.push(loc);
+                    this.previousPosition = loc;
+                }
+
+
+
+            }else{
+                //normal
                 let newPos = cc.v3(end.x, end.y);
                 let loc = this.onConvertToWorldPoint(newPos, cc.v2(360, 640));
                 //draw here
-                this.drawLine(this.previousPosition,loc,this.tempLine);
+                this.drawLine(this.previousPosition, loc, this.tempLine);
                 //do nothing
                 this.pointList.push(loc);
                 this.previousPosition = loc;
@@ -97,7 +114,7 @@ export default class NewClass extends cc.Component {
 
         }
         this.previousLoc = end;
-        console.log('length:'+this.tempBrushList.length);
+        console.log('length:' + this.tempBrushList.length);
 
 
     }
@@ -119,36 +136,37 @@ export default class NewClass extends cc.Component {
         var i = 0;
         let tempPos = null;
         this.pointList.forEach(element => {
-            if(tempPos==null) {
+            if (tempPos == null) {
+                //first node
                 tempPos = element;
-            }else{
-                this.drawLine(tempPos,element,this.path);
+            } else {
+                this.drawLine(tempPos, element, this.path);
                 tempPos = element;
             }
-            this.path.addComponent(cc.PhysicsCircleCollider).tag = i;
+            this.path.addComponent(cc.PhysicsBoxCollider).tag = i;
         });
- 
-        this.path.getComponents(cc.PhysicsCircleCollider).forEach(element => {
+
+        this.path.getComponents(cc.PhysicsBoxCollider).forEach(element => {
             element.tag = i;
-            element.radius = 5;
+            element.size = cc.size(20, 20);
             element.offset = this.pointList[i];
             i++;
         });
         this.path.getComponent(cc.RigidBody).type = cc.RigidBodyType.Dynamic;
         this.node.addChild(this.path);
         //clear old path
-        let drawing  = this.tempLine.getComponent(cc.Graphics);
+        let drawing = this.tempLine.getComponent(cc.Graphics);
         drawing.clear();
     }
     private onConvertToWorldPoint(point: cc.Vec3, centerPoint: cc.Vec2) {
         return cc.v2(point.x - centerPoint.x, point.y - centerPoint.y);
     }
-    drawing:cc.Graphics = null;
-    private drawLine(start:cc.Vec2,end:cc.Vec2,parent:cc.Node){
+    drawing: cc.Graphics = null;
+    private drawLine(start: cc.Vec2, end: cc.Vec2, parent: cc.Node) {
         this.drawing = parent.getComponent(cc.Graphics);
-        this.drawing.lineWidth = 6;
-        this.drawing.moveTo(start.x,start.y);
-        this.drawing.lineTo(end.x,end.y);
+        this.drawing.lineWidth = 10;
+        this.drawing.moveTo(start.x, start.y);
+        this.drawing.lineTo(end.x, end.y);
         this.drawing.strokeColor = cc.Color.RED;
         this.drawing.stroke();
         this.drawing.fill();

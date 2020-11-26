@@ -20,11 +20,12 @@ export default class NewClass extends cc.Component {
     pointList: cc.Vec2[] = [];
     @property(cc.Prefab)
     pathPrefab: cc.Prefab = null;
-    path: cc.Node = null;
+    path: cc.Node[] = [];
 
-    tempBrushList: cc.Node[] = [];
     @property(cc.Node)
     tempLine: cc.Node = null;
+    @property
+    drawPhysic:boolean = false;
     onLoad() {
         //physic environtment
         var manager = cc.director.getPhysicsManager();
@@ -38,10 +39,12 @@ export default class NewClass extends cc.Component {
         cc.PhysicsManager.VELOCITY_ITERATIONS = this.VELOCITY_ITERATIONS;
         cc.PhysicsManager.POSITION_ITERATIONS = this.POSITION_ITERATIONS;
         //
-
-        cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_aabbBit |
+        if(this.drawPhysic){
+            cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_aabbBit |
             cc.PhysicsManager.DrawBits.e_jointBit |
             cc.PhysicsManager.DrawBits.e_shapeBit
+
+        }
 
         //register event
         this.node.on(cc.Node.EventType.TOUCH_START, this.onTouchStart, this, true);
@@ -49,23 +52,30 @@ export default class NewClass extends cc.Component {
         this.node.on(cc.Node.EventType.TOUCH_END, this.onTouchEnd, this, true);
         this.node.on(cc.Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this, true);
         //
-        this.path = cc.instantiate(this.pathPrefab);
+
 
         //
     }
     lastLoc: cc.Vec3 = null;
+    pathCount = 0;
+    previousLoc: cc.Vec2 = null;
+    previousPosition: cc.Vec2 = null;
     private onTouchStart(event) {
         // while (this.brushList.length > 0) {
         //     this.brushList.pop().destroy();
         // }
+        this.lastLoc = null;
+        this.previousLoc = null;
+        this.previousPosition = null;
+        this.pointList = [];
+        this.path[this.pathCount] = cc.instantiate(this.pathPrefab);
         this.lastLoc = event.getLocation();
 
     }
-    previousLoc: cc.Vec2 = null;
-    previousPosition: cc.Vec2 = null;
+
     private onTouchMove(event) {
 
-        //add collider
+        //add collider  
         let end = event.getLocation();
 
         if (this.previousLoc == null) {
@@ -80,12 +90,12 @@ export default class NewClass extends cc.Component {
         } else {
             //if too close old
             let distance = this.deltaDistance(end, this.previousLoc);
-            if (distance < 20) {
+            if (distance < 10) {
                 //not draw
                 console.log('too close');
                 return;
-            } else if(distance>40){
-                let step = distance / 19;
+            } else if(distance>20){
+                let step = distance / 10;
                 for (var i = 0; i < step; i++) {
                     let dt = 1.0 * i / step;
                     let difX = end.x - this.previousLoc.x;
@@ -114,7 +124,6 @@ export default class NewClass extends cc.Component {
 
         }
         this.previousLoc = end;
-        console.log('length:' + this.tempBrushList.length);
 
 
     }
@@ -125,14 +134,14 @@ export default class NewClass extends cc.Component {
     count = 0;
     private onTouchEnd(event) {
         //
-        while (this.tempBrushList.length > 0) {
-            this.tempBrushList.pop().destroy();
-        }
         //
-        this.createLine();
+        this.createRealLine();
+        this.pathCount++;
+        this.pointList = null;
+
 
     }
-    private createLine() {
+    private createRealLine() {
         var i = 0;
         let tempPos = null;
         this.pointList.forEach(element => {
@@ -140,20 +149,20 @@ export default class NewClass extends cc.Component {
                 //first node
                 tempPos = element;
             } else {
-                this.drawLine(tempPos, element, this.path);
+                this.drawLine(tempPos, element, this.path[this.pathCount]);
                 tempPos = element;
             }
-            this.path.addComponent(cc.PhysicsBoxCollider).tag = i;
+            this.path[this.pathCount].addComponent(cc.PhysicsBoxCollider).tag = i;
         });
 
-        this.path.getComponents(cc.PhysicsBoxCollider).forEach(element => {
+        this.path[this.pathCount].getComponents(cc.PhysicsBoxCollider).forEach(element => {
             element.tag = i;
-            element.size = cc.size(20, 20);
+            element.size = cc.size(10, 10);
             element.offset = this.pointList[i];
             i++;
         });
-        this.path.getComponent(cc.RigidBody).type = cc.RigidBodyType.Dynamic;
-        this.node.addChild(this.path);
+        this.path[this.pathCount].getComponent(cc.RigidBody).type = cc.RigidBodyType.Dynamic;
+        this.node.addChild(this.path[this.pathCount]);
         //clear old path
         let drawing = this.tempLine.getComponent(cc.Graphics);
         drawing.clear();
@@ -164,10 +173,11 @@ export default class NewClass extends cc.Component {
     drawing: cc.Graphics = null;
     private drawLine(start: cc.Vec2, end: cc.Vec2, parent: cc.Node) {
         this.drawing = parent.getComponent(cc.Graphics);
-        this.drawing.lineWidth = 10;
+        this.drawing.lineWidth = 12;
         this.drawing.moveTo(start.x, start.y);
         this.drawing.lineTo(end.x, end.y);
         this.drawing.strokeColor = cc.Color.RED;
+        this.drawing.lineCap =cc.Graphics.LineCap.ROUND;
         this.drawing.stroke();
         this.drawing.fill();
     }
